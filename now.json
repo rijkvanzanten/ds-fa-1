@@ -1,6 +1,6 @@
 {
   "builds": [
     { "src": "api/*.js", "use": "@now/node" },
-    { "src": "app/*", "use": "@now/static" }
+    { "src": "*.{html,css,js}", "use": "@now/static" }
   ]
 }

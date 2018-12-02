@@ -1,6 +1,7 @@
 * {
   font-size: inherit;
   font-family: inherit;
+  outline: 0;
 }
 
 html, body {
@@ -43,7 +44,7 @@ body {
   }
 }
 
-#search-form {
+#search-form.active {
   padding: 16px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.1);
   margin: -16px -16px 16px -16px;

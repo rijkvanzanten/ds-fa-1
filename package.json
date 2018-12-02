@@ -1,0 +1,31 @@
+{
+  "name": "ds-fa-1",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "dev": "nodemon server.js",
+    "start": "node server.js"
+  },
+  "repository": "rijkvanzanten/ds-fa-1",
+  "keywords": [
+    "parsons",
+    "data-structures",
+    "final-assignment",
+    "aa",
+    "map"
+  ],
+  "author": "Rijk van Zanten <rijkvanzanten@me.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/rijkvanzanten/ds-fa-1/issues"
+  },
+  "homepage": "https://github.com/rijkvanzanten/ds-fa-1#readme",
+  "dependencies": {
+    "ejs": "^2.6.1",
+    "express": "^4.16.4"
+  },
+  "devDependencies": {
+    "nodemon": "^1.18.7"
+  }
+}

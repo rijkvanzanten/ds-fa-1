@@ -1,7 +1,0 @@
-{
-  "builds": [
-    { "src": "api/*.js", "use": "@now/node" },
-    { "src": "*.{html,css,js}", "use": "@now/static" }
-  ],
-  "alias": "rijk-ds-fa-1"
-}

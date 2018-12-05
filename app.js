@@ -54,7 +54,7 @@ async function renderMap(req, res) {
 }
 
 async function search(req, res) {
-
+  
 }
 
 function errorHandler(error, req, res) {

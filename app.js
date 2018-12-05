@@ -34,7 +34,23 @@ function asyncHandler(fn) {
 async function renderMap(req, res) {
   const locations = await database.select("id", "latitude", "longitude").from("locations");
 
-  res.render("index", { locations });
+  // Convert the raw locations to GeoJSON. Mapbox on the front-end will use this as
+  // the initial dataset
+  const geojson = {
+    type: "FeatureCollection",
+    features: locations.map(l => ({
+      type: "Feature",
+      geometry: {
+        type: "Point",
+        coordinates: [l.longitude, l.latitude],
+        properties: {
+          id: l.id
+        }
+      }
+    }))
+  };
+
+  res.render("index", { locations: geojson });
 }
 
 async function search(req, res) {

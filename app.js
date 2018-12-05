@@ -22,7 +22,7 @@ module.exports = express()
   .set("view engine", "ejs")
   .set("views", path.join(__dirname, "views"))
   .get("/", asyncHandler(renderMap))
-  .post("/", asyncHandler(search))
+  .get("/api/:locationID", asyncHandler(getInfo))
   .use(errorHandler);
 
 function asyncHandler(fn) {
@@ -39,13 +39,11 @@ async function renderMap(req, res) {
   const geojson = {
     type: "FeatureCollection",
     features: locations.map(l => ({
+      id: l.id,
       type: "Feature",
       geometry: {
         type: "Point",
-        coordinates: [l.longitude, l.latitude],
-        properties: {
-          id: l.id
-        }
+        coordinates: [l.longitude, l.latitude]
       }
     }))
   };
@@ -53,11 +51,106 @@ async function renderMap(req, res) {
   res.render("index", { locations: geojson });
 }
 
-async function search(req, res) {
-  
+async function getInfo(req, res) {
+  const locationID = req.params.locationID;
+
+  const locations = await database
+    .select([
+      "name",
+      "line1",
+      "line2",
+      "zip",
+      "city",
+      "state",
+      "wheelchair_accessible",
+      "latitude",
+      "longitude"
+    ])
+    .from("locations")
+    .where({ id: locationID });
+
+  const location = locations[0];
+
+  const meetings = await database
+    .select(["id", "title", "details"])
+    .from("meetings")
+    .where({ location_id: locationID });
+
+  const hours = await database
+    .select([
+      "meeting_hours.day",
+      "meeting_hours.start_time",
+      "meeting_hours.end_time",
+      "meeting_hours.special_interest",
+      "meeting_hours.meeting_id",
+      "meeting_types.name AS type"
+    ])
+    .from("meeting_hours")
+    .whereIn("meeting_id", meetings.map(h => h.id))
+    .leftJoin("meeting_types", "meeting_hours.meeting_type_id", "meeting_types.id");
+
+  const sorter = {
+    Monday: 1,
+    Tuesday: 2,
+    Wednesday: 3,
+    Thursday: 4,
+    Friday: 5,
+    Saturday: 6,
+    Sunday: 7
+  };
+
+  // Combine hours and meetings into a single object
+  const result = {
+    location,
+    meetings: meetings.map(({ id, title, details }) => {
+      return {
+        title, details,
+        hours: hours
+          .filter(h => h.meeting_id === id)
+          .map(({ day, start_time, end_time, special_interest, type }) => ({
+            day: getDayName(day), 
+            start_time: formatTime(start_time), 
+            end_time: formatTime(end_time), 
+            special_interest, 
+            type
+          }))
+          .sort((a, b) => {
+            return sorter[a.day] > sorter[b.day] ? 1 : -1;
+          })
+      };
+    }).sort((a, b) => a.title > b.title ? 1 : -1)
+  };
+
+  return res.json(result);
 }
 
 function errorHandler(error, req, res) {
   console.log("\n" + error + "\n");
   res.status(500).end();
+}
+
+function getDayName(day) {
+  switch(day) {
+    case "mon":
+      return "Monday";
+    case "tue":
+      return "Tuesday";
+    case "wed":
+      return "Wednesday";
+    case "thu":
+      return "Thursday";
+    case "fri":
+      return "Friday";
+    case "sat":
+      return "Saturday";
+    case "sun":
+      return "Sunday";
+  }
+}
+
+function formatTime(timeString) {
+  const H = +timeString.substr(0, 2);
+  const h = (H % 12) || 12;
+  const ampm = H < 12 ? "AM" : "PM";
+  return h + timeString.substr(2, 3) + ampm;
 }

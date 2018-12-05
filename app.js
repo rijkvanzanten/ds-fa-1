@@ -1,6 +1,8 @@
 const express = require("express");
 const path = require("path");
 const knex = require("knex");
+const axios = require("axios");
+const bodyParser = require("body-parser");
 
 require("dotenv").config();
 
@@ -19,10 +21,12 @@ const database = knex({
 
 module.exports = express()
   .use(express.static(path.join(__dirname, "public")))
+  .use(bodyParser.json())
   .set("view engine", "ejs")
   .set("views", path.join(__dirname, "views"))
   .get("/", asyncHandler(renderMap))
   .get("/api/:locationID", asyncHandler(getInfo))
+  .post("/api/search", asyncHandler(search))
   .use(errorHandler);
 
 function asyncHandler(fn) {
@@ -124,8 +128,24 @@ async function getInfo(req, res) {
   return res.json(result);
 }
 
-function errorHandler(error, req, res) {
-  console.log("\n" + error + "\n");
+async function search(req, res) {
+  const q = req.body.q;
+
+  const { data } = await axios.get("https://api.wit.ai/message", {
+    params: {
+      q,
+      v: 20181205
+    },
+    headers: {
+      Authorization: `Bearer ${process.env.WIT_KEY}`
+    }
+  });
+
+  return res.json(data);
+}
+
+function errorHandler(error, req, res, next) {
+  console.log("\n" + JSON.stringify(error, null, 2) + "\n");
   res.status(500).end();
 }
 

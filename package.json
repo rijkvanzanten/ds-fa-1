@@ -22,8 +22,13 @@
   },
   "homepage": "https://github.com/rijkvanzanten/ds-fa-1#readme",
   "dependencies": {
+    "body-parser": "^1.18.3",
+    "dotenv": "^6.1.0",
     "ejs": "^2.6.1",
-    "express": "^4.16.4"
+    "express": "^4.16.4",
+    "knex": "^0.15.2",
+    "pg": "^7.7.1",
+    "postgresql": "0.0.1"
   },
   "devDependencies": {
     "nodemon": "^1.18.7"

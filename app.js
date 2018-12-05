@@ -1,8 +1,47 @@
 const express = require("express");
 const path = require("path");
+const knex = require("knex");
+
+require("dotenv").config();
+
+const { DB_HOST, DB_PORT, DB_NAME, DB_USER, DB_PASSWORD } = process.env;
+
+const database = knex({
+  client: "pg",
+  connection: {
+    host: DB_HOST,
+    port: DB_PORT,
+    user: DB_USER,
+    password: DB_PASSWORD,
+    database: DB_NAME
+  }
+});
 
 module.exports = express()
   .use(express.static(path.join(__dirname, "public")))
   .set("view engine", "ejs")
   .set("views", path.join(__dirname, "views"))
-  .get("/", (req, res) => res.render("index"));
+  .get("/", asyncHandler(renderMap))
+  .post("/", asyncHandler(search))
+  .use(errorHandler);
+
+function asyncHandler(fn) {
+  return function(req, res, next) {
+    return Promise.resolve(fn(req, res, next).catch(next));
+  };
+}
+
+async function renderMap(req, res) {
+  const locations = await database.select("id", "latitude", "longitude").from("locations");
+
+  res.render("index", { locations });
+}
+
+async function search(req, res) {
+
+}
+
+function errorHandler(error, req, res) {
+  console.log("\n" + error + "\n");
+  res.status(500).end();
+}

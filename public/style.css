@@ -67,3 +67,18 @@ body {
   border: 1px solid white;
   cursor: pointer;
 }
+
+.popup-content {
+  max-height: 400px;
+  overflow-y: scroll;
+  width: 300px;
+}
+
+.popup-content ol {
+  list-style: none;
+  padding: 0;
+}
+
+.popup-content li {
+  margin-bottom: 1rem;
+}

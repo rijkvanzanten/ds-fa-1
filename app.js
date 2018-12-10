@@ -36,7 +36,9 @@ function asyncHandler(fn) {
 }
 
 async function renderMap(req, res) {
-  const locations = await database.select("id", "latitude", "longitude").from("locations");
+  const locations = await database
+    .select("id", "latitude", "longitude")
+    .from("locations");
 
   // Convert the raw locations to GeoJSON. Mapbox on the front-end will use this as
   // the initial dataset
@@ -91,7 +93,11 @@ async function getInfo(req, res) {
     ])
     .from("meeting_hours")
     .whereIn("meeting_id", meetings.map(h => h.id))
-    .leftJoin("meeting_types", "meeting_hours.meeting_type_id", "meeting_types.id");
+    .leftJoin(
+      "meeting_types",
+      "meeting_hours.meeting_type_id",
+      "meeting_types.id"
+    );
 
   const sorter = {
     Monday: 1,
@@ -106,23 +112,26 @@ async function getInfo(req, res) {
   // Combine hours and meetings into a single object
   const result = {
     location,
-    meetings: meetings.map(({ id, title, details }) => {
-      return {
-        title, details,
-        hours: hours
-          .filter(h => h.meeting_id === id)
-          .map(({ day, start_time, end_time, special_interest, type }) => ({
-            day: getDayName(day), 
-            start_time: formatTime(start_time), 
-            end_time: formatTime(end_time), 
-            special_interest, 
-            type
-          }))
-          .sort((a, b) => {
-            return sorter[a.day] > sorter[b.day] ? 1 : -1;
-          })
-      };
-    }).sort((a, b) => a.title > b.title ? 1 : -1)
+    meetings: meetings
+      .map(({ id, title, details }) => {
+        return {
+          title,
+          details,
+          hours: hours
+            .filter(h => h.meeting_id === id)
+            .map(({ day, start_time, end_time, special_interest, type }) => ({
+              day: getDayName(day),
+              start_time: formatTime(start_time),
+              end_time: formatTime(end_time),
+              special_interest,
+              type
+            }))
+            .sort((a, b) => {
+              return sorter[a.day] > sorter[b.day] ? 1 : -1;
+            })
+        };
+      })
+      .sort((a, b) => (a.title > b.title ? 1 : -1))
   };
 
   return res.json(result);
@@ -150,7 +159,7 @@ function errorHandler(error, req, res, next) {
 }
 
 function getDayName(day) {
-  switch(day) {
+  switch (day) {
     case "mon":
       return "Monday";
     case "tue":
@@ -170,7 +179,7 @@ function getDayName(day) {
 
 function formatTime(timeString) {
   const H = +timeString.substr(0, 2);
-  const h = (H % 12) || 12;
+  const h = H % 12 || 12;
   const ampm = H < 12 ? "AM" : "PM";
   return h + timeString.substr(2, 3) + ampm;
 }

@@ -29,13 +29,18 @@ module.exports = express()
   .post("/api/search", asyncHandler(search))
   .use(errorHandler);
 
+// Send any uncaught error to the default error handler
 function asyncHandler(fn) {
   return function(req, res, next) {
     return Promise.resolve(fn(req, res, next).catch(next));
   };
 }
 
+// Fetches the locations, converts it to GeoJSON and renders the home view
 async function renderMap(req, res) {
+  // The only things we need to render the dots on the map is the lat long and
+  // an identifier. We can later use this identifier to fetch the full info of a
+  // point
   const locations = await database
     .select("id", "latitude", "longitude")
     .from("locations");
@@ -57,9 +62,11 @@ async function renderMap(req, res) {
   res.render("index", { locations: geojson });
 }
 
+// Get the info for a single point on the map by identifier
 async function getInfo(req, res) {
   const locationID = req.params.locationID;
 
+  // Fetch the full location data
   const locations = await database
     .select([
       "name",
@@ -77,11 +84,13 @@ async function getInfo(req, res) {
 
   const location = locations[0];
 
+  // Get all the meetings that are held at this location
   const meetings = await database
     .select(["id", "title", "details"])
     .from("meetings")
     .where({ location_id: locationID });
 
+  // For every one of these meetings, fetch the individual meetings
   const hours = await database
     .select([
       "meeting_hours.day",
@@ -99,6 +108,7 @@ async function getInfo(req, res) {
       "meeting_types.id"
     );
 
+  // How to sort the days of the week
   const sorter = {
     Monday: 1,
     Tuesday: 2,
@@ -118,7 +128,10 @@ async function getInfo(req, res) {
           title,
           details,
           hours: hours
+            // Only nest the hours of the meeting we're working on
             .filter(h => h.meeting_id === id)
+
+            // Strip out the fields we don't need
             .map(({ day, start_time, end_time, special_interest, type }) => ({
               day: getDayName(day),
               start_time: formatTime(start_time),
@@ -126,17 +139,23 @@ async function getInfo(req, res) {
               special_interest,
               type
             }))
+
+            // Sort by day of the week
             .sort((a, b) => {
               return sorter[a.day] > sorter[b.day] ? 1 : -1;
             })
         };
       })
+
+      // Sort the top level meetings by title alphabetically
       .sort((a, b) => (a.title > b.title ? 1 : -1))
   };
 
   return res.json(result);
 }
 
+// Send the search query to NLP, use result to search for IDs of locations so the
+// application can show just those locations
 async function search(req, res) {
   const q = req.body.q;
 
@@ -153,11 +172,13 @@ async function search(req, res) {
   return res.json(data);
 }
 
+// Console log any uncaught errors and return a 500 error
 function errorHandler(error, req, res, next) {
   console.log("\n" + JSON.stringify(error, null, 2) + "\n");
   res.status(500).end();
 }
 
+// Convert a day shorthand to the full name
 function getDayName(day) {
   switch (day) {
     case "mon":
@@ -177,6 +198,8 @@ function getDayName(day) {
   }
 }
 
+// Convert a timestring YYYY-MM-DDTHH:MM:SS to 12h format 
+// 2018-12-10T15:36:00 => 3:36PM
 function formatTime(timeString) {
   const H = +timeString.substr(0, 2);
   const h = H % 12 || 12;

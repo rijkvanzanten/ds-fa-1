@@ -169,7 +169,47 @@ async function search(req, res) {
     }
   });
 
-  return res.json(data);
+  const query = database.select("id").from("locations");
+
+  const info = {};
+
+  if (data.entities) {
+    Object.keys(data.entities).forEach(entityName => {
+      const entity = data.entities[entityName][0];
+      if (entity.confidence < 0.9) return;
+
+      if (entityName === "neighborhood") {
+        const center = {
+          lat: +entity.metadata.split(",")[0],
+          lon: +entity.metadata.split(",")[1]
+        };
+
+        info.center = center;
+
+        query.whereRaw(`
+          (
+            3959 *
+            acos(
+              cos(radians(${center.lat})) *
+              cos(radians(latitude)) *
+              cos(
+                radians(longitude) - radians(${center.lon})
+              ) +
+              sin(radians(${center.lat})) *
+              sin(radians(latitude))
+            )
+          ) < 0.75
+        `);
+      }
+    });
+  }
+
+  const rows = await query;
+
+  return res.json({
+    ids: rows.map(row => row.id),
+    info
+  });
 }
 
 // Console log any uncaught errors and return a 500 error
@@ -198,7 +238,7 @@ function getDayName(day) {
   }
 }
 
-// Convert a timestring YYYY-MM-DDTHH:MM:SS to 12h format 
+// Convert a timestring YYYY-MM-DDTHH:MM:SS to 12h format
 // 2018-12-10T15:36:00 => 3:36PM
 function formatTime(timeString) {
   const H = +timeString.substr(0, 2);

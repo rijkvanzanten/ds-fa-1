@@ -9,7 +9,9 @@ const map = new mapboxgl.Map({
   container: "map",
   style: "mapbox://styles/mapbox/light-v9",
   center: [-74, 40.75],
-  zoom: 12
+  zoom: 12,
+  pitch: 60,
+  bearing: -10
 });
 
 // Keep track of what dot on the map is hovered
@@ -34,7 +36,7 @@ map.on("load", function() {
     filter: ["has", "point_count"],
     paint: {
       "circle-color": "#51bbd6",
-      "circle-radius": 20
+      "circle-radius": 14
     }
   });
 
@@ -126,9 +128,35 @@ const handleInput = debounce(function(event) {
         q: event.target.value
       })
       .then(res => res.data)
-      .then(console.log);
+      .then(data => {
+        if (data.ids) {
+          const locationsClone = Object.assign({}, locations);
+
+          locationsClone.features = locationsClone.features.filter(feature => {
+            return data.ids.includes(feature.id);
+          });
+
+          map.getSource("locations").setData(locationsClone);
+        }
+
+        if (data.info.center) {
+          map.flyTo({
+            center: [data.info.center.lon, data.info.center.lat],
+            zoom: 15,
+            pitch: 0,
+            bearing: 0
+          });
+        }
+      });
   } else {
-    // undo filter
+    const locationsClone = Object.assign({}, locations);
+    map.getSource("locations").setData(locationsClone);
+    map.flyTo({
+      center: [-74, 40.75],
+      zoom: 12,
+      pitch: 60,
+      bearing: -10
+    });
   }
 }, 500);
 

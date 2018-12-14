@@ -179,6 +179,9 @@ async function search(req, res) {
     await Promise.all(
       Object.keys(data.entities).map(async entityName => {
         const entity = data.entities[entityName][0];
+
+        console.log(entity);
+
         if (entity.confidence < 0.9) return;
 
         if (entityName === "neighborhood") {
@@ -213,22 +216,34 @@ async function search(req, res) {
           rows = rows.filter(id => locationIDs.includes(id));
         }
 
-        if (entityName === "datetime") {
+        // Specific time or day "tomorrow", "in 2 days", "now", "tomorrow at 3"
+        if (entityName === "datetime" && entity.value) {
           const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-          const date = new Date(entity.value).getDay();
-          const day = days[date];
+          const date = new Date(entity.value);
+          const day = days[date.getDay()];
 
-          const dayIDs = await database
+          const query = database
             .select("locations.id")
             .from("meeting_hours")
             .leftJoin("meetings", "meeting_hours.meeting_id", "meetings.id")
             .leftJoin("locations", "meetings.location_id", "locations.id")
-            .where({ day })
-            .groupBy("locations.id")
-            .map(row => row.id);
+            .where({ day });
+
+          if (entity.grain === "hour" || entity.grain === "minute" || entity.grain === "second") {
+            query.where({ start_time: date.toLocaleTimeString("en-GB") });
+          }
+
+          query.groupBy("locations.id");
+
+          const dayIDs = await query.map(row => row.id);
 
           rows = rows.filter(id => dayIDs.includes(id));
           info.day = day;
+        }
+
+        // Time range "before 3pm", "after 10a", "between 12 and 4"
+        if (entityName === "datetime" && (entity.to || entity.from)) {
+          
         }
       })
     );

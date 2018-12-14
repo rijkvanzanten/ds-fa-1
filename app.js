@@ -170,23 +170,30 @@ async function search(req, res) {
   });
 
   const info = {};
-  let rows = await database.select("id").from("locations");
-  rows = rows.map(row => row.id);
+  let rows = await database
+    .select("id")
+    .from("locations")
+    .map(row => row.id);
 
   if (data.entities) {
-    Object.keys(data.entities).forEach(async entityName => {
-      const entity = data.entities[entityName][0];
-      if (entity.confidence < 0.9) return;
+    await Promise.all(
+      Object.keys(data.entities).map(async entityName => {
+        const entity = data.entities[entityName][0];
+        if (entity.confidence < 0.9) return;
 
-      if (entityName === "neighborhood") {
-        const center = {
-          lat: +entity.metadata.split(",")[0],
-          lon: +entity.metadata.split(",")[1]
-        };
+        if (entityName === "neighborhood") {
+          const center = {
+            lat: +entity.metadata.split(",")[0],
+            lon: +entity.metadata.split(",")[1]
+          };
 
-        info.center = center;
+          info.center = center;
 
-        let locationRows = await database.select("id").from("locations").whereRaw(`
+          const locationIDs = await database
+            .select("id")
+            .from("locations")
+            .whereRaw(
+              `
           (
             3959 *
             acos(
@@ -199,19 +206,32 @@ async function search(req, res) {
               sin(radians(latitude))
             )
           ) < 0.75
-        `);
+        `
+            )
+            .map(row => row.id);
 
-        locationRows = locationRows.map(row => row.id);
+          rows = rows.filter(id => locationIDs.includes(id));
+        }
 
-        rows = rows.filter(id => locationRows.includes(id));
-      }
+        if (entityName === "datetime") {
+          const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+          const date = new Date(entity.value).getDay();
+          const day = days[date];
 
-      if (entityName === "datetime") {
-        const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
-        const date = new Date(entity.value).getDay();
-        const day = days[date];
-      }
-    });
+          const dayIDs = await database
+            .select("locations.id")
+            .from("meeting_hours")
+            .leftJoin("meetings", "meeting_hours.meeting_id", "meetings.id")
+            .leftJoin("locations", "meetings.location_id", "locations.id")
+            .where({ day })
+            .groupBy("locations.id")
+            .map(row => row.id);
+
+          rows = rows.filter(id => dayIDs.includes(id));
+          info.day = day;
+        }
+      })
+    );
   }
 
   return res.json({

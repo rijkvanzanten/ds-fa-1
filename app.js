@@ -169,12 +169,12 @@ async function search(req, res) {
     }
   });
 
-  const query = database.select("id").from("locations");
-
   const info = {};
+  let rows = await database.select("id").from("locations");
+  rows = rows.map(row => row.id);
 
   if (data.entities) {
-    Object.keys(data.entities).forEach(entityName => {
+    Object.keys(data.entities).forEach(async entityName => {
       const entity = data.entities[entityName][0];
       if (entity.confidence < 0.9) return;
 
@@ -186,7 +186,7 @@ async function search(req, res) {
 
         info.center = center;
 
-        query.whereRaw(`
+        let locationRows = await database.select("id").from("locations").whereRaw(`
           (
             3959 *
             acos(
@@ -200,14 +200,22 @@ async function search(req, res) {
             )
           ) < 0.75
         `);
+
+        locationRows = locationRows.map(row => row.id);
+
+        rows = rows.filter(id => locationRows.includes(id));
+      }
+
+      if (entityName === "datetime") {
+        const days = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+        const date = new Date(entity.value).getDay();
+        const day = days[date];
       }
     });
   }
 
-  const rows = await query;
-
   return res.json({
-    ids: rows.map(row => row.id),
+    ids: rows,
     info
   });
 }

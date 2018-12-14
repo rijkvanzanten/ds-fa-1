@@ -242,8 +242,32 @@ async function search(req, res) {
         }
 
         // Time range "before 3pm", "after 10a", "between 12 and 4"
+        // Because the meetings are a recurring event, it doesn't necessarily make
+        // sense to have "After monday", as it will wrap around indefinitely
         if (entityName === "datetime" && (entity.to || entity.from)) {
-          
+          const query = database
+            .select("locations.id")
+            .from("meeting_hours")
+            .leftJoin("meetings", "meeting_hours.meeting_id", "meetings.id")
+            .leftJoin("locations", "meetings.location_id", "locations.id");
+
+          if (entity.from) {
+            const date = new Date(entity.from.value);
+            query.where("start_time", ">", date.toLocaleTimeString("en-GB"));
+            info.from = date;
+          }
+
+          if (entity.to) {
+            const date = new Date(entity.to.value);
+            query.where("start_time", "<", date.toLocaleTimeString("en-GB"));
+            info.to = date;
+          }
+
+          query.groupBy("locations.id");
+
+          const dayIDs = await query.map(row => row.id);
+
+          rows = rows.filter(id => dayIDs.includes(id));
         }
       })
     );

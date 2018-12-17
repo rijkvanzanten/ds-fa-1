@@ -108,7 +108,7 @@ map.on("load", function() {
 
     const id = e.features[0].id;
 
-    const { data } = await axios.get("http://localhost:3000/api/" + id);
+    const { data } = await axios.get("https://ds-fa-1.rijks.website/api/" + id);
 
     while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
       coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
